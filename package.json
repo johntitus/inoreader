@@ -1,6 +1,6 @@
 {
   "name": "inoreader",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A Node.js wrapper of the Inoreader.com API.",
   "main": "index.js",
   "scripts": {
@@ -9,6 +9,10 @@
   "keywords": [
     "inoreader"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johntitus/inoreader.git"
+  },
   "author": "John Titus",
   "license": "ISC",
   "dependencies": {
