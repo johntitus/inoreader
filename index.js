@@ -8,17 +8,24 @@ function Inoreader(appId, appKey, appName) {
 	this.appKey = appKey;
 	this.appName = appName || '';
 
-	this.headers: {
-		'User-Agent': this.appName,
-		AppId: self.appId,
-		AppKey: self.appKey,
-		Authorization : 'GoogleLogin auth=' + self.token
+	this.headers = function() {
+		var result = {
+			AppId: this.appId,
+			AppKey: this.appKey
+		}
+		if (this.appName) {
+			result['User-Agent'] = this.appName;
+		}
+		if (this.token) {
+			result['Authorization'] = 'GoogleLogin auth=' + this.token;
+		}
+		return result;
 	};
 };
 
 Inoreader.prototype.login = function(email, password) {
 	var self = this;
-	return new Promise(function(resolve,reject){
+	return new Promise(function(resolve, reject) {
 
 		request.post('https://www.inoreader.com/accounts/ClientLogin?Email=' + email + '&Passwd=' + password, function(err, res, body) {
 			if (err) {
@@ -34,37 +41,48 @@ Inoreader.prototype.login = function(email, password) {
 	});
 };
 
-Inoreader.prototype.getUserInfo = function(callback) {
+Inoreader.prototype.getUserInfo = function() {
+	var self = this;
+	return new Promise(function(resolve, reject) {
+		var options = {
+			uri: apiEndpoint + 'user-info',
+			headers: self.headers()
+		};
 
-	var options = {
-		uri: apiEndpoint + 'user-info',
-		headers: {
-			AppId: this.appId,
-			AppKey: this.appKey
-		}
-	};
-
-	request.get(options, function(err, res, body) {
-		if (err) {
-			console.log('got error back')
-			console.log(err);
-		} else {
-			console.log(res.statusCode);
-			console.log(res.headers);
-			callback(body);
-		}
-	})
+		request.get(options, function(err, res, body) {
+			if (err) {
+				reject(err);
+			} else {
+				if (res.statusCode !== 200) {
+					reject(new Error(body));
+				} else {
+					resolve(JSON.parse(body));
+				}
+			}
+		});
+	});
 };
 
-Inoreader.prototype.getItems = function(numberOfItems) {
-	var numberOfItems = numberOfItems || 1000;
+Inoreader.prototype.streamContents = function(streamId, options) {
+
 	var self = this;
-	var nowTimeStamp = Math.floor(Date.now() / 1000);
-	var startTime = nowTimeStamp - 600; // 10 minutes ago
-	return new Promise(function(resolve,reject){
+
+	var uri = apiEndpoint + 'stream/contents/' + streamId;
+
+	var qs = [];
+	for (var p in options) {
+		if (options.hasOwnProperty(p)) {
+			qs.push(encodeURIComponent(p) + "=" + encodeURIComponent(options[p]));
+		}
+	}
+	var query = qs.join('&');
+
+	console.log(uri + '?' + query);
+
+	return new Promise(function(resolve, reject) {
 		var options = {
-			uri: apiEndpoint + 'stream/contents/s=user/-/state/com.google/fresh?ot=' + startTime + '&n=' + numberOfItems,
-			headers: self.headers
+			uri: uri + '?' + query,
+			headers: self.headers()
 		};
 
 		request.get(options, function(err, res, body) {
@@ -77,12 +95,12 @@ Inoreader.prototype.getItems = function(numberOfItems) {
 	});
 };
 
-Inoreader.prototype.markAllRead = function() {
+Inoreader.prototype.markAllRead = function(stream, timeStamp){
 	var self = this;
-	var timeStamp = Math.floor(Date.now() / 1000);
-	return new Promise(function(resolve,reject){
+	var timeStamp = timestamp || Math.floor(Date.now() / 1000);
+	return new Promise(function(resolve, reject) {
 		var options = {
-			uri: apiEndpoint + 'mark-all-as-read?s=user/-/state/com.google/fresh&ts=' + timeStamp,
+			uri: apiEndpoint + 'mark-all-as-read?s=' + stream + '&ts=' + timeStamp,
 			headers: self.headers
 		};
 
@@ -90,8 +108,8 @@ Inoreader.prototype.markAllRead = function() {
 			if (err) {
 				reject(err);
 			} else {
-				if ( res.statusCode !== 200 ){
-					reject( new Error(body) );
+				if (res.statusCode !== 200) {
+					reject(new Error(body));
 				} else {
 					resolve(body);
 				}
@@ -100,41 +118,19 @@ Inoreader.prototype.markAllRead = function() {
 	});
 };
 
-Inoreader.prototype.markAsRead = function(ids) {
-	var self = this;
-	
-	return new Promise(function(resolve,reject){
-		var options = {
-			uri: apiEndpoint + 'mark-all-as-read?ts=' + timeStamp,
-			headers: self.headers
-		};
-
-		request.post(options, function(err, res, body) {
-			if (err) {
-				reject(err);
-			} else {
-				console.log(res.statusCode);
-				//console.log(res.headers);
-				console.log(body);
-				resolve(body);
-			}
-		})
-	});
-};
-
 Inoreader.prototype.listSubscriptions = function() {
 	var self = this;
-	return new Promise(function(resolve,reject){
+	return new Promise(function(resolve, reject) {
 		var options = {
 			uri: apiEndpoint + 'subscription/list',
-			headers: self.headers
+			headers: self.headers()
 		};
 
 		request.get(options, function(err, res, body) {
 			if (err) {
 				reject(err);
 			} else {
-				if ( res.statusCode !== 200 ){
+				if (res.statusCode !== 200) {
 					reject(new Error(body));
 				} else {
 					resolve(JSON.parse(body));
@@ -146,20 +142,17 @@ Inoreader.prototype.listSubscriptions = function() {
 
 Inoreader.prototype.addSubscription = function(feedId) {
 	var self = this;
-	return new Promise(function(resolve,reject){
+	return new Promise(function(resolve, reject) {
 		var options = {
 			uri: apiEndpoint + 'subscription/quickadd?quickadd=' + encodeURIComponent(feedId),
-			headers: self.headers
+			headers: self.headers()
 		};
 
 		request.post(options, function(err, res, body) {
 			if (err) {
 				reject(err);
 			} else {
-				if ( res.statusCode !== 200 ){
-					console.log(res.statusCode);
-					console.log('*' + feedId + '*');
-					console.log(body);
+				if (res.statusCode !== 200) {
 					reject(new Error(body));
 				} else {
 					resolve(JSON.parse(body));
@@ -169,4 +162,6 @@ Inoreader.prototype.addSubscription = function(feedId) {
 	});
 };
 
-module.exports = new Inoreader;
+module.exports = function(appId, appKey, appName) {
+	return new Inoreader(appId, appKey, appName);
+}
