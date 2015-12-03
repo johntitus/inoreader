@@ -77,8 +77,6 @@ Inoreader.prototype.streamContents = function(streamId, options) {
 	}
 	var query = qs.join('&');
 
-	console.log(uri + '?' + query);
-
 	return new Promise(function(resolve, reject) {
 		var options = {
 			uri: uri + '?' + query,
