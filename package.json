@@ -1,6 +1,6 @@
 {
   "name": "inoreader",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A Node.js wrapper of the Inoreader.com API.",
   "main": "index.js",
   "scripts": {
